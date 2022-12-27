@@ -1,0 +1,31 @@
+xquery version "3.1";
+
+
+let $newline := fn:codepoints-to-string(10)
+
+for $document in collection('/db/BigDataxDataMining')/document
+let $title := $document/passage/infon[@key="section_type" and data() eq "TITLE"]
+let $abstractU := $title/following::passage/infon[@key="section_type" and data() eq "ABSTRACT"]
+let $abstractL := $abstractU/following-sibling::infon[@key="type" and data() eq "abstract"]
+where exists($title)
+  and (exists($abstractU) and exists($abstractL))
+let $pmid := $document/passage/infon[@key="article-id_pmid"]
+let $title1 := $pmid[1]/following-sibling::infon[index-of(./@key, "section_type") = 1 and data() eq "TITLE"]
+let $title2 := $title1/following-sibling::text[1]/data()
+let $refs := $pmid/following::passage/infon[@key="type" and data() eq "ref"]
+let $references := string-join(
+    for $ref in $refs
+       return
+         $ref/preceding-sibling::infon[@key="pub-id_pmid"]/data()
+, '/')
+let $abstracts := $pmid[1]/following::passage/infon[index-of(./@key, "section_type") = 1 and data() eq "ABSTRACT"]
+let $resume := string-join(
+  for $abstract in $abstracts
+  let $isin := $abstract/following-sibling::infon[@key="type" and data() eq "abstract"]
+  return
+    if (exists($isin)) then
+      $abstract/following-sibling::text[1]/data()
+    else ()
+, $newline)
+let $results := string-join((concat($pmid, '/',$references, ' ', $title2), $resume, $newline), $newline)
+return $results
